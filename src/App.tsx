@@ -107,7 +107,7 @@ export default function App() {
 
       {/* ── Main scroll container with iOS safe-area padding ── */}
       <div
-        className="flex flex-col items-center gap-6 min-h-dvh pb-8"
+        className="flex flex-col items-center gap-4 sm:gap-6 min-h-dvh pb-8"
         style={{
           paddingTop:    'max(env(safe-area-inset-top, 0px), 20px)',
           paddingLeft:   'env(safe-area-inset-left, 0px)',
@@ -116,8 +116,8 @@ export default function App() {
         }}
       >
         {/* ── Title ─────────────────────────────────────────── */}
-        <header className="pt-4 text-center">
-          <h1 className="text-3xl font-black tracking-tight">
+        <header className="pt-2 text-center">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
             <AnimatedGradientText>🐰 Bunny Drinking Games</AnimatedGradientText>
           </h1>
           <p className="text-white/40 text-xs mt-1">spin · reveal · drink</p>
@@ -126,17 +126,23 @@ export default function App() {
         {/* ── Intensity selector ─────────────────────────────── */}
         <IntensitySelector intensity={intensity} onChange={setIntensity} />
 
-        {/* ── Wheel ─────────────────────────────────────────── */}
-        <Wheel players={players} onResult={handleResult} />
+        {/* ── Landscape: side-by-side; portrait: stacked ────────── */}
+        <div className="flex flex-col landscape:flex-row landscape:items-start landscape:gap-6 landscape:px-4 w-full max-w-2xl">
+          {/* Wheel shrinks in landscape so both panels fit on screen */}
+          <div className="flex-shrink-0 landscape:flex-1 landscape:max-w-xs">
+            <Wheel players={players} onResult={handleResult} />
+          </div>
 
-        {/* ── Player manager ────────────────────────────────── */}
-        <PlayerManager
-          players={players}
-          maxPlayers={maxPlayers}
-          onAdd={addPlayer}
-          onRemove={removePlayer}
-          onClear={clearPlayers}
-        />
+          <div className="landscape:flex-1 landscape:pt-2 landscape:overflow-y-auto landscape:max-h-[calc(100svh-4rem)]">
+            <PlayerManager
+              players={players}
+              maxPlayers={maxPlayers}
+              onAdd={addPlayer}
+              onRemove={removePlayer}
+              onClear={clearPlayers}
+            />
+          </div>
+        </div>
 
         {/* ── Footer ────────────────────────────────────────── */}
         <footer className="text-center text-white/30 text-xs px-6 max-w-xs">
