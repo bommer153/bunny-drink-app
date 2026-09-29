@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+/* ── Design tokens ──────────────────────────────────────────────── */
+@theme {
+  --color-bunny-dark: oklch(10% 0.03 280);
+  --color-bunny-mid:  oklch(14% 0.04 280);
+  --color-bunny-rim:  oklch(22% 0.06 285);
+
+  /* Tailwind animation utilities: animate-shimmer, animate-gradient, animate-blob */
+  --animate-shimmer:  shimmer 2s linear infinite;
+  --animate-gradient: gradient-cycle 5s linear infinite;
+  --animate-blob:     blob 9s ease-in-out infinite;
+}
+
+/* ── Keyframes ──────────────────────────────────────────────────── */
+@keyframes shimmer {
+  from { background-position: 200% center; }
+  to   { background-position: -200% center; }
+}
+
+@keyframes gradient-cycle {
+  from { background-position: 0% center; }
+  to   { background-position: 200% center; }
+}
+
+@keyframes blob {
+  0%,  100% { transform: translate(0, 0) scale(1); }
+  33%        { transform: translate(22px, -18px) scale(1.06); }
+  66%        { transform: translate(-16px, 16px) scale(0.94); }
+}
+
+/* ── Base / iOS Safari resets ───────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+  background-color: oklch(10% 0.03 280);
+  color: white;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+/* ── 3-D card flip ─────────────────────────────────────────────── */
+.card-3d {
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+.card-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-face-back {
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
