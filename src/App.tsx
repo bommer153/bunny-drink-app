@@ -107,7 +107,7 @@ export default function App() {
 
       {/* ── Main scroll container with iOS safe-area padding ── */}
       <div
-        className="flex flex-col items-center gap-4 sm:gap-6 min-h-dvh pb-8"
+        className="flex flex-col items-center gap-4 sm:gap-6 min-h-dvh pb-8 overflow-x-hidden w-full"
         style={{
           paddingTop:    'max(env(safe-area-inset-top, 0px), 20px)',
           paddingLeft:   'env(safe-area-inset-left, 0px)',

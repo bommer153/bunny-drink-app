@@ -74,8 +74,8 @@ export function ResultModal({ winner, challenge, onClose }: ResultModalProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          // Full-screen backdrop — scrollable so it works on short screens (e.g. iPhone SE)
-          className="fixed inset-0 z-50 overflow-y-auto overscroll-contain"
+          // Full-screen backdrop, flex-centred; overflows to scroll on very short screens
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-6"
           style={{
             background: 'rgba(8, 5, 18, 0.96)',
             backdropFilter: 'blur(6px)',
@@ -83,7 +83,6 @@ export function ResultModal({ winner, challenge, onClose }: ResultModalProps) {
             paddingTop:    'max(env(safe-area-inset-top, 0px), 24px)',
             paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 24px)',
           }}
-          // Close on backdrop tap (not on card tap — stopPropagation handles that)
           onClick={onClose}
         >
           <motion.div
@@ -91,7 +90,7 @@ export function ResultModal({ winner, challenge, onClose }: ResultModalProps) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 48, opacity: 0 }}
             transition={{ delay: 0.08, duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col items-center gap-6 px-5 py-8 min-h-full justify-center"
+            className="flex flex-col items-center gap-6 px-5 py-8 w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
             {/* ── Winner name ───────────────────────────────────── */}
