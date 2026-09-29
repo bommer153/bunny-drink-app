@@ -64,7 +64,7 @@ export function PlayerManager({
             className="text-white/40 text-xs hover:text-rose-400 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-end"
             aria-label="Clear all players"
           >
-            Clear all
+            Clear al
           </button>
         )}
       </div>
