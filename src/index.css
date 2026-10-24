@@ -9,6 +9,9 @@
   --color-bunny-mid:  oklch(14% 0.04 280);
   --color-bunny-rim:  oklch(22% 0.06 285);
 
+  --font-display: 'Bungee', system-ui, sans-serif;
+  --font-sans:    'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
   /* Tailwind animation utilities: animate-shimmer, animate-gradient, animate-blob */
   --animate-shimmer:  shimmer 2s linear infinite;
   --animate-gradient: gradient-cycle 5s linear infinite;
@@ -32,6 +35,39 @@
   66%        { transform: translate(-16px, 16px) scale(0.94); }
 }
 
+/* ── Surfaces & controls ────────────────────────────────────────── */
+
+/* Raised card that groups related controls */
+@utility panel {
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, oklch(21% 0.06 288 / 0.9), oklch(14% 0.04 282 / 0.9));
+  border: 1px solid oklch(100% 0 0 / 0.08);
+  box-shadow:
+    inset 0 1px 0 oklch(100% 0 0 / 0.1),
+    0 14px 32px -12px oklch(0% 0 0 / 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Chunky "arcade" button: solid bottom edge that squashes on press. Set --edge for its colour. */
+@utility btn-3d {
+  box-shadow: 0 4px 0 0 var(--edge, oklch(0% 0 0 / 0.5));
+  transition: transform 80ms, box-shadow 80ms, background-color 200ms, color 200ms, opacity 200ms;
+  &:active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 0 var(--edge, oklch(0% 0 0 / 0.5));
+  }
+}
+
+/* Small section label */
+@utility kicker {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: oklch(100% 0 0 / 0.45);
+}
+
 /* ── Base / iOS Safari resets ───────────────────────────────────── */
 *,
 *::before,
@@ -48,14 +84,12 @@ html {
 html,
 body {
   overscroll-behavior: none;
-  background-color: oklch(10% 0.03 280);
+  background:
+    radial-gradient(120% 55% at 50% -10%, oklch(32% 0.16 300 / 0.6), transparent 60%),
+    radial-gradient(90% 45% at 100% 105%, oklch(35% 0.18 350 / 0.35), transparent 60%),
+    oklch(10% 0.03 280);
   color: white;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
 }

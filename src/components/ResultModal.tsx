@@ -23,8 +23,8 @@ interface ResultModalProps {
   onClose: () => void
 }
 
-const secondaryBtn = 'flex-1 min-h-[52px] rounded-xl border border-white/20 text-white/80 font-semibold text-sm transition-colors hover:bg-white/10 active:bg-white/15'
-const primaryBtn   = 'flex-1 min-h-[52px] rounded-xl bg-gradient-to-r from-violet-600 to-pink-600 text-white font-bold text-sm transition-opacity hover:opacity-90 active:opacity-80'
+const secondaryBtn = 'btn-3d flex-1 min-h-[52px] rounded-xl bg-white/10 text-white/85 font-bold text-sm hover:bg-white/15'
+const primaryBtn   = 'btn-3d flex-1 min-h-[52px] rounded-xl bg-gradient-to-r from-violet-600 to-pink-600 [--edge:#701a75] text-white font-extrabold text-sm hover:opacity-90'
 
 export function ResultModal({ winner, challenge, players, chickenSips, onSips, onClose }: ResultModalProps) {
   const [isFlipped, setIsFlipped]     = useState(false)
@@ -123,7 +123,7 @@ export function ResultModal({ winner, challenge, players, chickenSips, onSips, o
               <p className="text-white/50 text-xs uppercase tracking-[0.2em] mb-1">
                 🎉 The wheel chose
               </p>
-              <h2 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-pink-400 leading-tight">
+              <h2 className="font-display text-5xl bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-pink-400 leading-tight">
                 {winner.name}
               </h2>
             </div>

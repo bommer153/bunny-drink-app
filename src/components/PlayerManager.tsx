@@ -51,11 +51,12 @@ export function PlayerManager({
   const topSips = Math.max(0, ...players.map((p) => p.sips ?? 0))
 
   return (
-    <div className="w-full max-w-sm px-4 flex flex-col gap-4">
+    <div className="w-full max-w-sm px-4">
+    <div className="panel p-4 flex flex-col gap-4">
 
       {/* ── Header row ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
-        <h2 className="text-white font-bold text-base">
+        <h2 className="font-display text-white text-base">
           Players{' '}
           <span className={cn('text-sm font-normal', isFull ? 'text-amber-400' : 'text-white/50')}>
             {players.length}/{maxPlayers}
@@ -104,8 +105,8 @@ export function PlayerManager({
           disabled={isFull || !inputName.trim()}
           className={cn(
             'min-h-[48px] min-w-[64px] px-4 rounded-xl font-bold text-sm',
-            'bg-violet-600 text-white',
-            'hover:bg-violet-500 active:bg-violet-700 transition-colors',
+            'btn-3d bg-violet-600 text-white [--edge:#4c1d95]',
+            'hover:bg-violet-500',
             'disabled:opacity-40 disabled:cursor-not-allowed',
           )}
           aria-label="Add player"
@@ -176,6 +177,7 @@ export function PlayerManager({
           No players yet — add some above 👆
         </p>
       )}
+    </div>
     </div>
   )
 }

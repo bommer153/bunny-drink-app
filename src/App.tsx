@@ -29,6 +29,14 @@ const INTENSITY_OPTIONS: {
   { level: 4, label: 'Extreme', emoji: '💀', desc: 'No mercy'     },
 ]
 
+// Active colour per tier; --edge is the btn-3d bottom edge
+const INTENSITY_ACTIVE: Record<IntensityLevel, string> = {
+  1: 'bg-emerald-500 [--edge:#065f46]',
+  2: 'bg-orange-500 [--edge:#9a3412]',
+  3: 'bg-red-600 [--edge:#7f1d1d]',
+  4: 'bg-fuchsia-700 [--edge:#4a044e] shadow-[0_0_18px_rgba(192,38,211,0.5)]',
+}
+
 interface IntensitySelectorProps {
   intensity: IntensityLevel
   onChange: (l: IntensityLevel) => void
@@ -36,24 +44,24 @@ interface IntensitySelectorProps {
 
 function IntensitySelector({ intensity, onChange }: IntensitySelectorProps) {
   return (
-    <div className="flex gap-2 w-full max-w-sm px-4" role="group" aria-label="Intensity level">
+    <div className="flex gap-2 w-full" role="group" aria-label="Intensity level">
       {INTENSITY_OPTIONS.map((opt) => (
         <button
           key={opt.level}
-          onClick={() => onChange(opt.level)}
+          onClick={() => { sfx.tap(); onChange(opt.level) }}
           aria-pressed={intensity === opt.level}
           className={cn(
-            'flex-1 flex flex-col items-center gap-0.5 rounded-xl py-2 px-1',
-            'min-h-[60px] text-xs font-semibold transition-all duration-200',
+            'btn-3d flex-1 flex flex-col items-center gap-0.5 rounded-xl py-2 px-1',
+            'min-h-[64px] text-xs font-extrabold',
             'touch-manipulation', // disable double-tap zoom
             intensity === opt.level
-              ? 'bg-white/20 text-white ring-1 ring-white/30 shadow-[0_0_12px_rgba(139,92,246,0.3)]'
-              : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/80',
+              ? cn('text-white', INTENSITY_ACTIVE[opt.level])
+              : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white/80',
           )}
         >
           <span className="text-xl leading-none" aria-hidden>{opt.emoji}</span>
           <span>{opt.label}</span>
-          <span className="text-[10px] text-white/40 font-normal hidden sm:block">{opt.desc}</span>
+          <span className="text-[10px] opacity-60 font-normal hidden sm:block">{opt.desc}</span>
         </button>
       ))}
     </div>
@@ -69,16 +77,16 @@ interface CategorySelectorProps {
 
 function CategorySelector({ category, onChange }: CategorySelectorProps) {
   return (
-    <div className="flex flex-wrap justify-center gap-2 w-full max-w-sm px-4" role="group" aria-label="Game mode">
+    <div className="flex flex-wrap justify-center gap-2 w-full" role="group" aria-label="Game mode">
       {CATEGORIES.map((c) => (
         <button
           key={c.id}
           onClick={() => { sfx.tap(); onChange(c.id) }}
           aria-pressed={category === c.id}
           className={cn(
-            'min-h-[48px] px-3 rounded-full text-xs font-bold transition-all duration-200 touch-manipulation',
+            'btn-3d min-h-[48px] px-3 rounded-full text-xs font-extrabold touch-manipulation',
             category === c.id
-              ? 'bg-gradient-to-r from-violet-600 to-pink-600 text-white shadow-[0_0_14px_rgba(219,39,119,0.45)]'
+              ? 'bg-gradient-to-r from-violet-600 to-pink-600 text-white [--edge:#701a75] shadow-[0_0_14px_rgba(219,39,119,0.45)]'
               : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white/80',
           )}
         >
@@ -173,21 +181,26 @@ export default function App() {
             onClick={toggleSound}
             aria-pressed={soundOn}
             aria-label={soundOn ? 'Mute sounds' : 'Unmute sounds'}
-            className="absolute right-2 top-2 min-h-[48px] min-w-[48px] rounded-full text-xl text-white/60 hover:bg-white/10"
+            className="panel absolute right-2 top-2 min-h-[48px] min-w-[48px] rounded-full text-xl"
           >
             {soundOn ? '🔊' : '🔇'}
           </button>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            <AnimatedGradientText>🐰 Bunny Drinking Games</AnimatedGradientText>
+          <h1 className="font-display text-3xl sm:text-4xl leading-none -rotate-2 drop-shadow-[0_4px_0_rgba(0,0,0,0.5)]">
+            <span aria-hidden>🐰 </span>
+            <AnimatedGradientText>Bunny Drinking Games</AnimatedGradientText>
           </h1>
-          <p className="text-white/40 text-xs mt-1">spin · reveal · drink</p>
+          <p className="kicker mt-3">spin · reveal · drink</p>
         </header>
 
-        {/* ── Intensity selector ─────────────────────────────── */}
-        <IntensitySelector intensity={intensity} onChange={setIntensity} />
-
-        {/* ── Game mode ──────────────────────────────────────── */}
-        <CategorySelector category={category} onChange={setCategory} />
+        {/* ── Settings: intensity + game mode ────────────────── */}
+        <section className="w-full max-w-sm px-4">
+          <div className="panel p-3 flex flex-col gap-3">
+            <h2 className="kicker px-1">Intensity</h2>
+            <IntensitySelector intensity={intensity} onChange={setIntensity} />
+            <h2 className="kicker px-1 mt-1">Game mode</h2>
+            <CategorySelector category={category} onChange={setCategory} />
+          </div>
+        </section>
 
         {/* ── Landscape: side-by-side; portrait: stacked ────────── */}
         <div className="flex flex-col landscape:flex-row landscape:items-start landscape:gap-6 landscape:px-4 w-full max-w-2xl">

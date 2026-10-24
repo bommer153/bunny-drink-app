@@ -53,7 +53,7 @@ export function PenaltyAlert({ penalty, onDone }: PenaltyAlertProps) {
             initial={{ scale: 3, rotate: -14, opacity: 0 }}
             animate={{ scale: 1, rotate: -4, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 14 }}
-            className="text-5xl sm:text-6xl font-black leading-none text-yellow-300 drop-shadow-[0_0_24px_rgba(250,204,21,0.6)]"
+            className="font-display text-5xl sm:text-6xl leading-none text-yellow-300 drop-shadow-[0_0_24px_rgba(250,204,21,0.6)]"
           >
             🍺 {headline}
           </motion.p>
