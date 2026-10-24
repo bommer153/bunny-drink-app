@@ -1,14 +1,18 @@
 import { useRef, useState, useCallback } from 'react'
-import { motion, useMotionValue, animate, useReducedMotion } from 'motion/react'
+import { motion, useMotionValue, useMotionValueEvent, animate, useReducedMotion } from 'motion/react'
 import type { Player } from '@/lib/storage'
 import { ShimmerButton } from '@/components/ui/shimmer-button'
+import { sfx } from '@/lib/sfx'
+import { cn } from '@/lib/utils'
 
 // ── SVG constants (320 × 320 viewBox) ────────────────────────────────────────
-const VB   = 320   // viewBox width = height
-const CX   = 160   // wheel centre x
-const CY   = 160   // wheel centre y
-const R    = 144   // outer radius of the wheel
-const HUB  = 38    // hub circle radius (button sits on top)
+const VB    = 320   // viewBox width = height
+const CX    = 160   // wheel centre x
+const CY    = 160   // wheel centre y
+const R     = 134   // outer radius of the slices
+const RIM   = 144   // centre line of the golden rim
+const HUB   = 38    // hub circle radius (button sits on top)
+const BULBS = 24
 
 // 12 vivid, distinct slice colours
 const SLICE_COLORS = [
@@ -16,6 +20,25 @@ const SLICE_COLORS = [
   '#e76f51', '#8338ec', '#06d6a0', '#ef476f',
   '#ffd166', '#118ab2', '#a7c957', '#cb4335',
 ]
+
+// ── Spin math (exported for the self-check) ──────────────────────────────────
+// Convention: 0° = 12 o'clock, clockwise positive. Slice i spans [i·s, (i+1)·s].
+// Rotating the wheel clockwise by R moves wheel-angle A to (A + R), and the
+// pointer sits at 0°, so the wheel-angle under the pointer is (−R) mod 360.
+
+/** Index of the slice under the pointer for a given wheel rotation. */
+export function sliceAtPointer(rotation: number, n: number): number {
+  const underPointer = (((-rotation) % 360) + 360) % 360
+  return Math.floor(underPointer / (360 / n)) % n
+}
+
+/** Absolute rotation that lands slice `idx` under the pointer after `turns` full spins. */
+export function spinTarget(current: number, idx: number, n: number, turns: number, jitter: number): number {
+  const centre = idx * (360 / n) + 180 / n
+  // Align to a whole turn first — adding the offset to an arbitrary angle was the old bug.
+  const base = current - (((current % 360) + 360) % 360)
+  return base + turns * 360 + ((360 - centre) % 360) + jitter
+}
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -29,10 +52,7 @@ function toXY(r: number, angleDeg: number) {
   return { x: CX + r * Math.cos(rad), y: CY + r * Math.sin(rad) }
 }
 
-/**
- * Build the SVG `d` attribute for a pie-slice wedge.
- * Both angles are in our convention (0 = top, clockwise).
- */
+/** SVG `d` for a pie-slice wedge (angles in our convention). */
 function wedgePath(startDeg: number, endDeg: number): string {
   const s = toXY(R, startDeg)
   const e = toXY(R, endDeg)
@@ -46,12 +66,10 @@ function wedgePath(startDeg: number, endDeg: number): string {
 }
 
 /**
- * Compute a CSS `rotate(deg, tx, ty)` that aligns a text label radially.
+ * Compute a `rotate(deg, tx, ty)` that aligns a label radially.
  * Labels in the lower half are flipped to prevent upside-down text.
  */
 function labelRotation(svgMidAngle: number, tx: number, ty: number): string {
-  // svgMidAngle is in SVG convention (0 = 3 o'clock).
-  // `isLower`: text centre is below the wheel horizontal midline.
   const isLower = ty > CY + 2
   const rot = isLower ? svgMidAngle - 90 : svgMidAngle + 90
   return `rotate(${rot.toFixed(1)},${tx.toFixed(2)},${ty.toFixed(2)})`
@@ -70,21 +88,39 @@ interface WheelProps {
 
 export function Wheel({ players, onResult }: WheelProps) {
   const [isSpinning, setIsSpinning] = useState(false)
-  const rotation = useMotionValue(0)
+  const [landedIdx, setLandedIdx]   = useState<number | null>(null)
+  const rotation      = useMotionValue(0)
+  const pointerTilt   = useMotionValue(0)
   const lastWinnerIdx = useRef<number | null>(null)
+  const lastPeg       = useRef(0)
+  const lastClick     = useRef(0)
   const prefersReducedMotion = useReducedMotion() ?? false
 
   const n = players.length
   const sliceAngle = n > 0 ? 360 / n : 360
 
   // Smaller font / shorter labels when there are more players
-  const fontSize  = n <= 4 ? 13 : n <= 7 ? 11 : n <= 9 ? 10 : 9
+  const fontSize  = n <= 4 ? 14 : n <= 7 ? 12 : n <= 9 ? 10 : 9
   const maxChars  = n <= 4 ? 10 : n <= 7 ? 7  : n <= 9 ? 5  : 4
+
+  // Each slice boundary passing the pointer flicks it and clicks (like a real peg wheel)
+  useMotionValueEvent(rotation, 'change', (v) => {
+    const peg = Math.floor(v / sliceAngle)
+    if (peg === lastPeg.current) return
+    lastPeg.current = peg
+    animate(pointerTilt, [-24, 0], { duration: 0.22, ease: 'easeOut' })
+    const now = performance.now()
+    if (now - lastClick.current > 45) {
+      lastClick.current = now
+      sfx.click()
+    }
+  })
 
   const spin = useCallback(async () => {
     if (isSpinning || n < 2) return
+    sfx.tap()
+    setLandedIdx(null)
 
-    // ── Pick winner ────────────────────────────────────────────────────
     // Avoid repeating the same player when there are 3+ players.
     let idx: number
     do {
@@ -92,56 +128,48 @@ export function Wheel({ players, onResult }: WheelProps) {
     } while (n >= 3 && idx === lastWinnerIdx.current)
     lastWinnerIdx.current = idx
 
-    // ── Angle math ─────────────────────────────────────────────────────
-    // Convention: 0° = 12 o'clock, clockwise positive.
-    // Slice i occupies [i·sliceAngle, (i+1)·sliceAngle].
-    // Winner's slice centre (in wheel-local degrees from top):
-    const winnerCenter = idx * sliceAngle + sliceAngle / 2
-
-    // When the wheel has rotated clockwise by R°, a point originally at A°
-    // (from top) moves to (A + R) % 360. The pointer is fixed at 0° (top).
-    // We need: (winnerCenter + R) % 360 = 0  →  R = (360 − winnerCenter) % 360
-    const landingOffset = (360 - (winnerCenter % 360)) % 360
-
-    // 5–7 full extra spins (randomised for variety) + landing offset + jitter
-    const extraSpins = (5 + Math.floor(Math.random() * 3)) * 360
-    const jitter     = (Math.random() - 0.5) * sliceAngle * 0.6  // ±30 % of slice
-
-    const target = rotation.get() + extraSpins + landingOffset + jitter
+    const turns  = 5 + Math.floor(Math.random() * 3)
+    const jitter = (Math.random() - 0.5) * sliceAngle * 0.6  // ±30 % of slice, never crosses a boundary
+    const target = spinTarget(rotation.get(), idx, n, turns, jitter)
 
     setIsSpinning(true)
-
     if (prefersReducedMotion) {
-      // Skip the 5.5 s animation entirely
       rotation.set(target)
-      setIsSpinning(false)
-      onResult(players[idx])
-      return
+    } else {
+      await animate(rotation, target, { duration: 5.5, ease: [0.12, 0.9, 0.25, 1] })
     }
-
-    await animate(rotation, target, {
-      duration: 5.5,
-      ease: [0.16, 1, 0.3, 1], // easeOutExpo-like strong deceleration
-    })
-
     setIsSpinning(false)
-    onResult(players[idx])
+
+    // Announce whatever is actually under the pointer, so the result always matches the screen
+    const landed = sliceAtPointer(rotation.get(), n)
+    setLandedIdx(landed)
+    navigator.vibrate?.(60)
+    // Brief beat so everyone sees where it stopped before the card opens
+    setTimeout(() => onResult(players[landed]), prefersReducedMotion ? 0 : 700)
   }, [isSpinning, n, sliceAngle, rotation, prefersReducedMotion, players, onResult])
 
   const disabled = n < 2
 
   // Hub button diameter as a percentage of the SVG viewBox so it scales with it
-  const hubPct = ((HUB * 2) / VB) * 100  // ≈ 23.75 %
+  const hubPct = ((HUB * 2) / VB) * 100
 
   return (
     <div className="flex flex-col items-center w-full max-w-sm px-4">
-      {/* Cap wheel height on short screens so it doesn't crowd the rest of the UI */}
-      <div className="relative w-full aspect-square" style={{ maxWidth: VB, maxHeight: 'min(100vw, 55svh)' }}>
+      {/* Width (not height) is capped so the box stays square on short screens */}
+      <div className="relative aspect-square" style={{ width: `min(100%, ${VB}px, 55svh)` }}>
+
+        {/* ── Glow behind the wheel ────────────────────────────── */}
+        <div
+          aria-hidden
+          className={cn(
+            'absolute inset-[6%] rounded-full blur-2xl transition-opacity duration-500',
+            'bg-[conic-gradient(from_0deg,#7c3aed,#db2777,#f59e0b,#06b6d4,#7c3aed)]',
+            isSpinning ? 'opacity-80 animate-spin [animation-duration:3s]' : 'opacity-40',
+          )}
+        />
 
         {/* ── Rotating wheel layer ─────────────────────────────── */}
         <motion.div
-          // motion rotates around the element's CSS transform-origin (50 % 50 % by default),
-          // which is the centre of this square div = centre of the SVG wheel. ✓
           style={{ rotate: rotation, touchAction: 'none' }}
           className="absolute inset-0"
         >
@@ -151,17 +179,26 @@ export function Wheel({ players, onResult }: WheelProps) {
             style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
             aria-hidden
           >
-            {/* Base circle */}
+            <defs>
+              {/* Depth: darker toward the hub and at the very edge */}
+              <radialGradient id="wheel-shade" cx={CX} cy={CY} r={R} gradientUnits="userSpaceOnUse">
+                <stop offset="0"    stopColor="#000" stopOpacity="0.5" />
+                <stop offset="0.45" stopColor="#000" stopOpacity="0" />
+                <stop offset="0.9"  stopColor="#fff" stopOpacity="0.06" />
+                <stop offset="1"    stopColor="#000" stopOpacity="0.35" />
+              </radialGradient>
+            </defs>
+
             <circle cx={CX} cy={CY} r={R} fill="#1e1b4b" />
 
             {/* Slices + labels */}
             {players.map((player, i) => {
               const start     = i * sliceAngle
               const end       = (i + 1) * sliceAngle
-              const midMy     = start + sliceAngle / 2          // our convention
-              const svgMid    = midMy - 90                      // SVG convention
+              const midMy     = start + sliceAngle / 2
+              const svgMid    = midMy - 90
               const svgMidRad = (svgMid * Math.PI) / 180
-              const tr        = R * 0.62
+              const tr        = R * 0.64
               const tx        = CX + tr * Math.cos(svgMidRad)
               const ty        = CY + tr * Math.sin(svgMidRad)
 
@@ -170,7 +207,7 @@ export function Wheel({ players, onResult }: WheelProps) {
                   <path
                     d={wedgePath(start, end)}
                     fill={SLICE_COLORS[i % SLICE_COLORS.length]}
-                    stroke="#0f0f1a"
+                    stroke="rgba(255,255,255,0.35)"
                     strokeWidth={1.5}
                   />
                   <text
@@ -179,13 +216,13 @@ export function Wheel({ players, onResult }: WheelProps) {
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fontSize={fontSize}
-                    fontWeight="bold"
+                    fontWeight={900}
                     fill="white"
                     paintOrder="stroke"
-                    stroke="#0f0f1a"
-                    strokeWidth={2.5}
+                    stroke="rgba(15,15,26,0.85)"
+                    strokeWidth={3}
                     transform={labelRotation(svgMid, tx, ty)}
-                    style={{ userSelect: 'none', pointerEvents: 'none' }}
+                    style={{ userSelect: 'none', pointerEvents: 'none', letterSpacing: '0.02em' }}
                   >
                     {truncate(player.name, maxChars)}
                   </text>
@@ -193,41 +230,86 @@ export function Wheel({ players, onResult }: WheelProps) {
               )
             })}
 
-            {/* Hub disc (rotates with wheel — uniform circle so rotation is invisible) */}
-            <circle
-              cx={CX} cy={CY} r={HUB + 4}
-              fill="#0f0f1a"
-              stroke="#4c1d95"
-              strokeWidth={2}
-            />
+            <circle cx={CX} cy={CY} r={R} fill="url(#wheel-shade)" pointerEvents="none" />
+
+            {/* Winning slice flashes once the wheel stops */}
+            {landedIdx !== null && landedIdx < n && (
+              <motion.path
+                d={wedgePath(landedIdx * sliceAngle, (landedIdx + 1) * sliceAngle)}
+                fill="white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.55, 0.1, 0.55, 0.25] }}
+                transition={{ duration: 0.7 }}
+              />
+            )}
+
+            {/* Pegs on every slice boundary */}
+            {players.map((p, i) => {
+              const { x, y } = toXY(R - 5, i * sliceAngle)
+              return <circle key={`peg-${p.id}`} cx={x} cy={y} r={3} fill="#fef3c7" stroke="#78350f" strokeWidth={1} />
+            })}
+
+            <circle cx={CX} cy={CY} r={HUB + 6} fill="#0f0f1a" stroke="#fbbf24" strokeWidth={3} />
           </svg>
         </motion.div>
 
-        {/* ── Static overlay: outer ring + pointer ─────────────── */}
+        {/* ── Static overlay: golden rim, bulbs, gloss ─────────── */}
         <svg
           viewBox={`0 0 ${VB} ${VB}`}
           className="absolute inset-0 w-full h-full"
           style={{ pointerEvents: 'none' }}
           aria-hidden
         >
-          {/* Decorative outer ring */}
-          <circle
-            cx={CX} cy={CY} r={R + 2}
-            fill="none"
-            stroke="#6d28d9"
-            strokeWidth={5}
-          />
-          {/* Pointer triangle fixed at 12 o'clock */}
-          <polygon
-            points={`${CX},${CY - R - 5} ${CX - 11},${CY - R + 11} ${CX + 11},${CY - R + 11}`}
-            fill="#FCD34D"
-            stroke="#0f0f1a"
-            strokeWidth={1.5}
-          />
+          <defs>
+            <linearGradient id="rim-gold" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0"    stopColor="#fde68a" />
+              <stop offset="0.5"  stopColor="#b45309" />
+              <stop offset="1"    stopColor="#fde68a" />
+            </linearGradient>
+            <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0"   stopColor="#fff" stopOpacity="0.28" />
+              <stop offset="0.5" stopColor="#fff" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Light from above — stays put while the wheel turns */}
+          <ellipse cx={CX} cy={CY - R * 0.45} rx={R * 0.82} ry={R * 0.5} fill="url(#gloss)" />
+
+          <circle cx={CX} cy={CY} r={RIM} fill="none" stroke="url(#rim-gold)" strokeWidth={14} />
+          <circle cx={CX} cy={CY} r={RIM + 7} fill="none" stroke="#78350f" strokeWidth={1.5} />
+
+          {/* Marquee bulbs: slow twinkle idle, fast chase while spinning */}
+          {Array.from({ length: BULBS }, (_, i) => {
+            const { x, y } = toXY(RIM, (i * 360) / BULBS)
+            return (
+              <circle
+                key={i}
+                cx={x} cy={y} r={3.2}
+                fill={i % 2 ? '#fff7cc' : '#fbbf24'}
+                className={prefersReducedMotion ? undefined : 'animate-pulse'}
+                style={{
+                  animationDuration: isSpinning ? '0.4s' : '2s',
+                  animationDelay:    `${(i % 2) * (isSpinning ? 0.2 : 1)}s`,
+                  filter: 'drop-shadow(0 0 3px #fde68a)',
+                }}
+              />
+            )
+          })}
         </svg>
 
+        {/* ── Pointer (pivots at its top, flicks on each peg) ──── */}
+        <motion.div
+          aria-hidden
+          className="absolute left-1/2 -top-[3%] w-[11%] -translate-x-1/2 origin-top pointer-events-none"
+          style={{ rotate: pointerTilt }}
+        >
+          <svg viewBox="0 0 40 56" className="w-full drop-shadow-[0_3px_4px_rgba(0,0,0,0.6)]">
+            <path d="M20 54 L4 18 A17 17 0 1 1 36 18 Z" fill="#ef4444" stroke="#fde68a" strokeWidth="3" strokeLinejoin="round" />
+            <circle cx="20" cy="17" r="6" fill="#fde68a" />
+          </svg>
+        </motion.div>
+
         {/* ── SPIN button centred over the hub ─────────────────── */}
-        {/* pointer-events-none on the wrapper, auto on the button itself */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <ShimmerButton
             onClick={spin}
@@ -235,11 +317,10 @@ export function Wheel({ players, onResult }: WheelProps) {
             aria-label={isSpinning ? 'Spinning…' : 'Spin the wheel'}
             className="pointer-events-auto rounded-full text-xs font-black tracking-[0.15em]"
             style={{
-              // Scale proportionally with the SVG so the button always covers the hub
-              width:     `${hubPct.toFixed(2)}%`,
+              width:       `${hubPct.toFixed(2)}%`,
               aspectRatio: '1 / 1',
-              minWidth:  '44px',  // iOS touch-target floor
-              minHeight: '44px',
+              minWidth:    '48px',
+              minHeight:   '48px',
             }}
           >
             {isSpinning ? '…' : 'SPIN'}

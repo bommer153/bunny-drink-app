@@ -34,6 +34,7 @@ const vibrate = (pattern: number | number[]) => navigator.vibrate?.(pattern)
 
 export const sfx = {
   tap:     () => { tone(660, 60); vibrate(15) },
+  click:   () => tone(1800, 18, 'square'), // wheel peg; no vibration, it fires many times a second
   flip:    () => { tone(440, 90); tone(880, 140, 'triangle', 0.08); vibrate([40, 30, 40]) },
   tick:    () => { tone(1000, 50, 'square'); vibrate(20) },
   timeUp:  () => { tone(140, 500, 'sawtooth'); vibrate([300, 80, 300]) },
