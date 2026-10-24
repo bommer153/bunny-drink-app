@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* landscape variant for orientation-based layout */
+@custom-variant landscape (@media (orientation: landscape));
+
 /* ── Design tokens ──────────────────────────────────────────────── */
 @theme {
   --color-bunny-dark: oklch(10% 0.03 280);

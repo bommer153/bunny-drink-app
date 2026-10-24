@@ -135,8 +135,8 @@ export function Wheel({ players, onResult }: WheelProps) {
 
   return (
     <div className="flex flex-col items-center w-full max-w-sm px-4">
-      {/* Aspect-ratio container keeps the wheel square */}
-      <div className="relative w-full aspect-square" style={{ maxWidth: VB }}>
+      {/* Cap wheel height on short screens so it doesn't crowd the rest of the UI */}
+      <div className="relative w-full aspect-square" style={{ maxWidth: VB, maxHeight: 'min(100vw, 55svh)' }}>
 
         {/* ── Rotating wheel layer ─────────────────────────────── */}
         <motion.div
