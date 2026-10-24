@@ -9,6 +9,7 @@ interface PlayerManagerProps {
   onAdd: (name: string) => void
   onRemove: (id: string) => void
   onClear: () => void
+  onResetSips: () => void
 }
 
 export function PlayerManager({
@@ -17,6 +18,7 @@ export function PlayerManager({
   onAdd,
   onRemove,
   onClear,
+  onResetSips,
 }: PlayerManagerProps) {
   const [inputName, setInputName] = useState('')
   const [error, setError]         = useState<string | null>(null)
@@ -46,6 +48,7 @@ export function PlayerManager({
   }
 
   const isFull = players.length >= maxPlayers
+  const topSips = Math.max(0, ...players.map((p) => p.sips ?? 0))
 
   return (
     <div className="w-full max-w-sm px-4 flex flex-col gap-4">
@@ -58,6 +61,14 @@ export function PlayerManager({
             {players.length}/{maxPlayers}
           </span>
         </h2>
+        {topSips > 0 && (
+          <button
+            onClick={onResetSips}
+            className="ml-auto mr-3 text-white/40 text-xs hover:text-amber-400 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-end"
+          >
+            Reset sips
+          </button>
+        )}
         {players.length > 0 && (
           <button
             onClick={onClear}
@@ -138,8 +149,14 @@ export function PlayerManager({
                 className="flex items-center gap-1 bg-white/10 border border-white/15 rounded-full pl-3 overflow-hidden"
               >
                 <span className="text-white text-sm font-medium py-1.5 max-w-[120px] truncate">
+                  {topSips > 0 && player.sips === topSips && <span aria-label="Top drinker">👑 </span>}
                   {player.name}
                 </span>
+                {(player.sips ?? 0) > 0 && (
+                  <span className="text-amber-300 text-xs font-bold" aria-label={`${player.sips} sips`}>
+                    🍺{player.sips}
+                  </span>
+                )}
                 <button
                   onClick={() => onRemove(player.id)}
                   aria-label={`Remove ${player.name}`}

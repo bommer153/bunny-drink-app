@@ -50,5 +50,24 @@ export function usePlayers() {
     savePlayers([])
   }, [])
 
-  return { players, loaded, addPlayer, removePlayer, clearPlayers, maxPlayers: MAX_PLAYERS }
+  const addSips = useCallback((ids: string[], sips: number) => {
+    setPlayers((prev) => {
+      const next = prev.map((p) => (ids.includes(p.id) ? { ...p, sips: (p.sips ?? 0) + sips } : p))
+      savePlayers(next)
+      return next
+    })
+  }, [])
+
+  const resetSips = useCallback(() => {
+    setPlayers((prev) => {
+      const next = prev.map((p) => ({ ...p, sips: 0 }))
+      savePlayers(next)
+      return next
+    })
+  }, [])
+
+  return {
+    players, loaded, addPlayer, removePlayer, clearPlayers, addSips, resetSips,
+    maxPlayers: MAX_PLAYERS,
+  }
 }

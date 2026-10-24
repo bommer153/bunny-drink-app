@@ -3,10 +3,12 @@ import { get, set } from 'idb-keyval'
 export interface Player {
   id: string
   name: string
+  /** Sips assigned this session (missing on players saved by older versions) */
+  sips?: number
 }
 
-/** 1 = Chill, 2 = Spicy, 3 = Chaos */
-export type IntensityLevel = 1 | 2 | 3
+/** 1 = Casual, 2 = Spicy, 3 = Chaotic, 4 = Extreme */
+export type IntensityLevel = 1 | 2 | 3 | 4
 
 const PLAYERS_KEY = 'bdg:players'
 const INTENSITY_KEY = 'bdg:intensity'
